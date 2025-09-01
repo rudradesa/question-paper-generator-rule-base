@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Question Paper Generator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📝 Question Paper Generator</h1>
+    </header>
+
+    <section class="card">
+      <form method="post" action="/generate">
+        <div class="grid">
+          <div>
+            <label>Subject</label>
+            <input type="text" name="subject" value="General" required>
+          </div>
+          <div>
+            <label>MCQs</label>
+            <input type="number" name="mcq" value="10" min="0">
+          </div>
+          <div>
+            <label>Fill in the Blanks</label>
+            <input type="number" name="fib" value="10" min="0">
+          </div>
+          <div>
+            <label>Short Questions</label>
+            <input type="number" name="short" value="5" min="0">
+          </div>
+          <div>
+            <label>Long Questions</label>
+            <input type="number" name="long" value="4" min="0">
+          </div>
+        </div>
+
+        <label>Source Text (paste your content)</label>
+        <textarea name="source_text" rows="12" placeholder="Paste the syllabus/chapter/notes here. If left empty, a sample Computer Networks text will be used."></textarea>
+
+        <button type="submit" class="btn">Generate Paper</button>
+      </form>
+    </section>
+<form method="POST" enctype="multipart/form-data">
+        <input type="file" name="pdf" accept=".pdf" required>
+        <button type="submit">Upload & Generate</button>
+    </form>
+    
+  </div>
+</body>
+</html>
