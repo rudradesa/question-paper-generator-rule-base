@@ -1,0 +1,22 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fb; color: #111827; }
+.container { max-width: 980px; margin: 0 auto; padding: 24px; }
+header h1 { margin: 0 0 8px 0; }
+header p { margin: 0 0 16px 0; color: #6b7280; }
+
+.card { background: white; padding: 16px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
+label { display: block; font-weight: 600; margin-bottom: 6px; }
+input[type="text"], input[type="number"], textarea { width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
+textarea { resize: vertical; }
+
+.btn { display: inline-block; background: #111827; color: white; border: none; padding: 10px 14px; border-radius: 12px; cursor: pointer; text-decoration: none; }
+.btn:hover { opacity: 0.9; }
+
+h2 { margin-top: 24px; }
+ol { padding-left: 22px; }
+.q { margin: 6px 0; }
+.ans { margin: 6px 0 12px 0; color: #065f46; font-size: 0.95rem; }
+.center { text-align: center; }
+.muted { color: #6b7280; }
+.page-break { margin-top: 24px; }
