@@ -3,8 +3,14 @@ from flask import Flask, render_template, request, jsonify
 
 from generator.qp_generator import generate_question_paper, extract_text_from_pdf, get_pdf_hash
 import tempfile
-
+from werkzeug.utils import secure_filename
 app = Flask(__name__)
+
+
+UPLOAD_FOLDER = os.path.join(app.root_path, "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -15,16 +21,25 @@ def upload():
     if not file:
         return "No file uploaded", 400
 
-    # Save file temporarily
+    # Make filename safe
+    filename = secure_filename(file.filename)
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         file.save(tmp.name)
         pdf_path = tmp.name
 
-    # Generate hash for security
+    # Generate SHA256 hash
     pdf_hash = get_pdf_hash(pdf_path)
 
-    # Extract text from PDF
-    text = extract_text_from_pdf(pdf_path)
+    final_filename = f"{pdf_hash}.pdf"
+    final_path = os.path.join(app.config["UPLOAD_FOLDER"], final_filename)
+
+    if not os.path.exists(final_path):
+        os.rename(pdf_path, final_path)
+    else:
+        os.remove(pdf_path)  
+
+    text = extract_text_from_pdf(final_path)
 
     subject = (request.form.get("subject") or "General").strip()
     counts = {
@@ -33,10 +48,17 @@ def upload():
         "short": int(request.form.get("short", 5)),
         "long": int(request.form.get("long", 4)),
     }
+
     paper = generate_question_paper(text, subject, counts)
-    return render_template("paper.html", paper=paper, subject=subject, counts=counts, pdf_hash=pdf_hash)
 
-
+    return render_template(
+        "paper.html",
+        paper=paper,
+        subject=subject,
+        counts=counts,
+        pdf_hash=pdf_hash,
+        pdf_file=final_filename
+    )
 @app.route("/generate", methods=["POST"])
 def generate():
     text = (request.form.get("source_text") or "").strip()
