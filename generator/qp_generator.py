@@ -30,6 +30,7 @@ _safe_download([
 
 STOPWORDS = set(stopwords.words("english"))
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z\-']+")
+
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Extract all text from a PDF file"""
     text = ""
@@ -227,6 +228,29 @@ def generate_long_questions(text: str, n: int) -> List[str]:
         i += 1
     return qs[:n]
 
+# --- New Logic for Upper / Middle / Lower split ---
+def split_questions_by_level(all_questions: List) -> Dict[str, List]:
+    """
+    Split questions into Upper (top 30%), Middle (middle 40%), Lower (bottom 30%).
+    Works on any list of questions.
+    """
+    total = len(all_questions)
+    if total == 0:
+        return {
+            "Upper (top 30%)": [],
+            "Middle (middle 40%)": [],
+            "Lower (bottom 30%)": []
+        }
+
+    upper_end = int(0.3 * total)
+    middle_end = upper_end + int(0.4 * total)
+
+    return {
+        "Upper (top 30%)": all_questions[:upper_end],
+        "Middle (middle 40%)": all_questions[upper_end:middle_end],
+        "Lower (bottom 30%)": all_questions[middle_end:]
+    }
+
 def generate_question_paper(text: str, subject: str, counts: Dict[str, int]) -> Dict:
     text = clean_text(text or "")
     if not text:
@@ -236,19 +260,27 @@ def generate_question_paper(text: str, subject: str, counts: Dict[str, int]) -> 
     fib = generate_fib(text, counts.get("fib", 10))
     short_q = generate_short_questions(text, counts.get("short", 5))
     long_q = generate_long_questions(text, counts.get("long", 4))
+
+    # Combine all into one list for level splitting
+    all_questions = []
+    all_questions.extend(mcq)
+    all_questions.extend(fib)
+    all_questions.extend(short_q)
+    all_questions.extend(long_q)
+
+    # Split into levels
+    level_split = split_questions_by_level(all_questions)
+
     return {
         "subject": subject,
-        "mcq": mcq,
-        "fib": fib,
-        "short": short_q,
-        "long": long_q,
+        "questions_by_level": level_split
     }
 
 # A tiny sample text (used when no input is provided)
-SAMPLE_TEXT = """Computer networks enable devices to exchange data using links such as cables, Wi‑Fi, or optical fiber.
+SAMPLE_TEXT = """Computer networks enable devices to exchange data using links such as cables, Wi-Fi, or optical fiber.
 Routers forward packets between networks using routing tables and protocols like OSPF and BGP.
 The TCP/IP model includes layers such as application, transport, internet, and link.
 Switches operate at the data link layer to build MAC address tables and segment collision domains.
-DNS resolves human‑readable domain names to IP addresses, while DHCP assigns IP configurations dynamically.
+DNS resolves human-readable domain names to IP addresses, while DHCP assigns IP configurations dynamically.
 Firewalls filter traffic based on rules to improve security, and NAT translates private addresses.
 """
