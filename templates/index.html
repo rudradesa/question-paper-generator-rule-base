@@ -5,6 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Question Paper Generator</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #111827;
+    }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 24px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+    textarea,
+    input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 16px;
+      font-size: 1rem;
+    }
+    textarea {
+      resize: vertical;
+    }
+    .btn-container {
+      text-align: center;
+    }
+    .btn {
+      display: inline-block;
+      background: #111827;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: 0.3s;
+    }
+    .btn:hover {
+      background: #374151;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -12,68 +78,27 @@
       <h1>📝 Question Paper Generator</h1>
     </header>
 
+    <!-- Paste Text Form -->
     <section class="card">
       <form method="post" action="/generate">
-        <div class="grid">
-          <div>
-            <label>Subject</label>
-            <input type="text" name="subject" value="General" required>
-          </div>
-          <div>
-            <label>MCQs</label>
-            <input type="number" name="mcq" value="10" min="0">
-          </div>
-          <div>
-            <label>Fill in the Blanks</label>
-            <input type="number" name="fib" value="10" min="0">
-          </div>
-          <div>
-            <label>Short Questions</label>
-            <input type="number" name="short" value="5" min="0">
-          </div>
-          <div>
-            <label>Long Questions</label>
-            <input type="number" name="long" value="4" min="0">
-          </div>
+        <label for="source_text">Source Text (paste your content)</label>
+        <textarea name="source_text" id="source_text" rows="10" placeholder="Paste the syllabus/chapter/notes here. If left empty, a sample Computer Networks text will be used."></textarea>
+        
+        <div class="btn-container">
+          <button type="submit" class="btn">Generate Paper</button>
         </div>
-
-        <label>Source Text (paste your content)</label>
-        <textarea name="source_text" rows="12" placeholder="Paste the syllabus/chapter/notes here. If left empty, a sample Computer Networks text will be used."></textarea>
-
-        <button type="submit" class="btn">Generate Paper</button>
       </form>
     </section>
-<form method="POST" action="/upload" enctype="multipart/form-data" class="card">
-  <div class="grid">
-    <div>
-      <label>Subject</label>
-      <input type="text" name="subject" value="General" required>
-    </div>
-    <div>
-      <label>MCQs</label>
-      <input type="number" name="mcq" value="10" min="0">
-    </div>
-    <div>
-      <label>Fill in the Blanks</label>
-      <input type="number" name="fib" value="10" min="0">
-    </div>
-    <div>
-      <label>Short Questions</label>
-      <input type="number" name="short" value="5" min="0">
-    </div>
-    <div>
-      <label>Long Questions</label>
-      <input type="number" name="long" value="4" min="0">
-    </div>
-  </div>
 
-  <label>Upload PDF</label>
-  <input type="file" name="pdf" accept=".pdf" required>
+    <!-- Upload PDF Form -->
+    <form method="POST" action="/upload" enctype="multipart/form-data" class="card">
+      <label for="pdf" style="text-align:center;">Upload PDF</label>
+      <input type="file" id="pdf" name="pdf" accept=".pdf" class="input-sys">
 
-  <button type="submit" class="btn">Upload & Generate</button>
-</form>
-
-    
+      <div class="btn-container">
+        <button type="submit" class="btn">Upload & Generate</button>
+      </div>
+    </form>
   </div>
 </body>
 </html>
