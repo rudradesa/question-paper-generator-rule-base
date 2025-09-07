@@ -21,8 +21,8 @@ try {
     $mail->isSMTP();
     $mail->Host = 'smtp.gmail.com';
     $mail->SMTPAuth = true;
-    $mail->Username = 'eduspace29@gmail.com';
-    $mail->Password = 'fbjw azej qpnk iljl'; 
+    $mail->Username = '';
+    $mail->Password = '';//email vari sys 
     $mail->SMTPSecure = 'tls';
     $mail->Port = 587;
 
