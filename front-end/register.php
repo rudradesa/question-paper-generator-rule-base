@@ -1,0 +1,321 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Questly</title>
+    <link rel="icon" href="ES.png" type="image/png">
+</head>
+<body>
+    <header>
+        <nav>
+            <h1 class="logo"><a href="index.html" style="text-decoration: none; color: #ff6b00;">Questly</a></h1>
+        </nav>
+    </header>
+
+    <div class="register-container">
+        <div class="register-card">
+            <div class="register-header">
+                <h1>Create Account</h1>
+                <p>Join Questly</p>
+            </div>
+            
+            <div class="error-message" id="errorMessage"></div>
+            
+            <?php
+            session_start();
+            require('conn.php');
+            if (isset($_POST['register'])) {
+                $name = trim($_POST['name']);
+                $username = trim($_POST['username']);
+                $email = trim($_POST['email']);
+                $password = trim($_POST['password']);
+               
+                if (empty($name) || empty($username) || empty($email) || empty($password)) {
+                    echo "<script>
+                        document.getElementById('errorMessage').style.display = 'block';
+                        document.getElementById('errorMessage').textContent = '❌ All fields are required!';
+                    </script>";
+                    exit;
+                }
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    echo "<script>
+                        document.getElementById('errorMessage').style.display = 'block';
+                        document.getElementById('errorMessage').textContent = '❌ Invalid email format!';
+                    </script>";
+                    exit;
+                }
+               
+                // Duplicate check
+                $check_query = "SELECT * FROM register_user WHERE email='$email' OR username='$username'";
+                $result = mysqli_query($conn, $check_query);
+                if ($result && mysqli_num_rows($result) > 0) {
+                    while ($row = mysqli_fetch_assoc($result)) {
+                        if ($row['email'] === $email) {
+                            echo "<script>
+                                document.getElementById('errorMessage').style.display = 'block';
+                                document.getElementById('errorMessage').textContent = '❌ Email already exists.';
+                            </script>";
+                        }
+                        elseif ($row['username'] === $username) {
+                            echo "<script>
+                                document.getElementById('errorMessage').style.display = 'block';
+                                document.getElementById('errorMessage').textContent = '❌ Username already exists.';
+                            </script>";
+                        }
+                    }
+                    exit;
+                }
+              
+                $_SESSION['register_pending'] = [
+                    'full_name' => $name,
+                    'username' => $username,
+                    'email' => $email,
+                    'password' => hash('sha256', $password),
+                    'code' => rand(100000, 999999)
+                ];
+             
+                header("Location: send-verification.php");
+                exit;
+            }
+            ?>
+            
+            <form action="register.php" method="post">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Choose a username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Email id" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                </div>
+                
+                <button type="submit" name="register" class="submit-btn">Register</button>
+            </form>
+            
+            <a href="login.php" class="login-link">Already registered? Login here</a>
+            <a href="index.html" class="return-home">← Back to Home</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Questly. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Show error messages that might be generated by PHP
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            
+            if (error) {
+                const errorMessage = document.getElementById('errorMessage');
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = decodeURIComponent(error);
+            }
+        });
+    </script>
+      <style>
+        :root {
+           --primary: #ff6b00;
+            --primary-dark: #e06106ff;
+            --secondary: #10b981;
+            --dark: #1e293b;
+            --light: #f2f2f2;
+            --gray: #64748b;
+            --error: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+                  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+
+        }
+        
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 2rem;
+            width: 100%;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+                font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+      
+        
+        .register-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+        }
+        
+        .register-card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            padding: 2.5rem;
+        }
+        
+        .register-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .register-header h1 {
+            font-size: 2rem;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .register-header p {
+            color: var(--gray);
+        }
+        
+        .error-message {
+            padding: 0.75rem;
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border-radius: 5px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            width: 100%;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .form-group input {
+            padding: 0.75rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .domain-hint {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-top: 0.25rem;
+        }
+        
+        .submit-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 0.5rem;
+        }
+        
+        .submit-btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .login-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+        
+        .login-link:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+        
+        .return-home {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--gray);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .return-home:hover {
+            color: var(--dark);
+        }
+        
+        footer {
+            background-color: var(--dark);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .register-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</body>
+</html
