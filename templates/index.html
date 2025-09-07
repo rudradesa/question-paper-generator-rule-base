@@ -3,102 +3,110 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Question Paper Generator</title>
+  <title>{{ subject }} - Question Paper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      background: #f5f7fb;
-      color: #111827;
-    }
-    .container {
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 24px;
-    }
-    header {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    header h1 {
-      font-size: 2rem;
-      margin-bottom: 8px;
-    }
-    .card {
-      background: white;
-      padding: 24px;
-      border-radius: 16px;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-      margin-bottom: 24px;
-    }
-    label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 8px;
-      text-align: left;
-    }
-    textarea,
-    input[type="file"] {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      background: #fff;
-      margin-bottom: 16px;
-      font-size: 1rem;
-    }
-    textarea {
-      resize: vertical;
-    }
-    .btn-container {
-      text-align: center;
-    }
-    .btn {
-      display: inline-block;
-      background: #111827;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 500;
-      transition: 0.3s;
-    }
-    .btn:hover {
-      background: #374151;
+    @media print {
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>📝 Question Paper Generator</h1>
+    <div class="no-print">
+      <a href="/" class="btn">← Back</a>
+      <button onclick="window.print()" class="btn">Print / Save as PDF</button>
+    </div>
+
+    <header class="center">
+      <h1>{{ subject }} — Question Paper</h1>
+      {% if pdf_hash %}
+  <p><strong>File Hash (SHA256):</strong> {{ pdf_hash }}</p>
+{% endif %}
+
     </header>
 
-    <!-- Paste Text Form -->
-    <section class="card">
-      <form method="post" action="/generate">
-        <label for="source_text">Source Text (paste your content)</label>
-        <textarea name="source_text" id="source_text" rows="10" placeholder="Paste the syllabus/chapter/notes here. If left empty, a sample Computer Networks text will be used."></textarea>
-        
-        <div class="btn-container">
-          <button type="submit" class="btn">Generate Paper</button>
-        </div>
-      </form>
-    </section>
+ <section>
+  <h2>MCQ</h2>
+  <ol>
+    {% for q in paper.questions_by_level["Upper (top 30%)"] %}
+      {% if q.question is defined and q.options is defined %}
+       
+        <li>
+          <div class="q">{{ q.question }}</div>
+          <ol type="A">
+            {% for opt in q.options %}
+              <li>{{ opt }}</li>
+            {% endfor %}
+          </ol>
+          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
+        </li>
+      {% elif q.question is defined and q.answer is defined %}
+        <li>
+          <div class="q">{{ q.question }}</div>
+          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
+        </li>
+      {% else %}
+        <li class="q">{{ q }}</li>
+      {% endif %}
+    {% endfor %}
+  </ol>
+</section>
 
-    <!-- Upload PDF Form -->
-    <form method="POST" action="/upload" enctype="multipart/form-data" class="card">
-      <label for="pdf" style="text-align:center;">Upload PDF</label>
-      <input type="file" id="pdf" name="pdf" accept=".pdf" class="input-sys">
+<section class="page-break">
+  <h2>Fill in the blacks</h2>
+  <ol>
+    {% for q in paper.questions_by_level["Middle (middle 40%)"] %}
+      {% if q.question is defined and q.options is defined %}
+        <li>
+          <div class="q">{{ q.question }}</div>
+          <ol type="A">
+            {% for opt in q.options %}
+              <li>{{ opt }}</li>
+            {% endfor %}
+          </ol>
+          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
+        </li>
+      {% elif q.question is defined and q.answer is defined %}
+        <li>
+          <div class="q">{{ q.question }}</div>
+          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
+        </li>
+      {% else %}
+        <li class="q">{{ q }}</li>
+      {% endif %}
+    {% endfor %}
+  </ol>
+</section>
 
-      <div class="btn-container">
-        <button type="submit" class="btn">Upload & Generate</button>
-      </div>
-    </form>
+<section class="page-break">
+  <h2>Long Questions</h2>
+  <ol>
+    {% for q in paper.questions_by_level["Lower (bottom 30%)"] %}
+      {% if q.question is defined and q.options is defined %}
+        <li>
+          <div class="q">{{ q.question }}</div>
+          <ol type="A">
+            {% for opt in q.options %}
+              <li>{{ opt }}</li>
+            {% endfor %}
+          </ol>
+          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
+        </li>
+      {% elif q.question is defined and q.answer is defined %}
+        <li>
+          <div class="q">{{ q.question }}</div>
+          <!-- <div class="ans">Answer: <em>{{ q.answer }}</em></div> -->
+        </li>
+      {% else %}
+        <li class="q">{{ q }}</li>
+      {% endif %}
+    {% endfor %}
+  </ol>
+</section>
+
+   
   </div>
 </body>
 </html>
