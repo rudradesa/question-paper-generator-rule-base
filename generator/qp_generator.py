@@ -101,7 +101,6 @@ def wordnet_distractors(answer: str, pool: List[str], k: int = 3) -> List[str]:
             distractors.add(w)
     except Exception:
         pass
-    # Fallback purely from pool if WordNet empty
     if len(distractors) < k:
         choices = [w for w in pool if w != answer]
         random.shuffle(choices)
@@ -145,7 +144,6 @@ def generate_mcq(text: str, n: int) -> List[Dict]:
         })
         used_answers.add(answer)
 
-    # Fallback: if not enough, create generic MCQs from top keys
     i = 0
     while len(mcqs) < n and i < len(keys):
         answer = keys[i]
@@ -171,7 +169,6 @@ def generate_fib(text: str, n: int) -> List[Dict]:
     for s in sents:
         if len(out) >= n:
             break
-        # choose a keyword present in this sentence
         low = s.lower()
         candidates = [k for k in keys if f" {k} " in f" {low} " and k not in used]
         if not candidates:
@@ -181,7 +178,6 @@ def generate_fib(text: str, n: int) -> List[Dict]:
         out.append({"question": q, "answer": ans})
         used.add(ans)
 
-    # Fallback generic if needed
     while len(out) < n and keys:
         ans = keys[len(out) % len(keys)]
         q = f"Fill in the blank: The key concept in this topic is _____."
@@ -228,7 +224,6 @@ def generate_long_questions(text: str, n: int) -> List[str]:
         i += 1
     return qs[:n]
 
-# --- New Logic for Upper / Middle / Lower split ---
 def split_questions_by_level(all_questions: List) -> Dict[str, List]:
     """
     Split questions into Upper (top 30%), Middle (middle 40%), Lower (bottom 30%).
@@ -254,21 +249,18 @@ def split_questions_by_level(all_questions: List) -> Dict[str, List]:
 def generate_question_paper(text: str, subject: str, counts: Dict[str, int]) -> Dict:
     text = clean_text(text or "")
     if not text:
-        # Provide a helpful default using bundled sample
         text = SAMPLE_TEXT
     mcq = generate_mcq(text, counts.get("mcq", 10))
     fib = generate_fib(text, counts.get("fib", 10))
     short_q = generate_short_questions(text, counts.get("short", 5))
     long_q = generate_long_questions(text, counts.get("long", 4))
 
-    # Combine all into one list for level splitting
     all_questions = []
     all_questions.extend(mcq)
     all_questions.extend(fib)
     all_questions.extend(short_q)
     all_questions.extend(long_q)
 
-    # Split into levels
     level_split = split_questions_by_level(all_questions)
 
     return {
@@ -276,7 +268,7 @@ def generate_question_paper(text: str, subject: str, counts: Dict[str, int]) -> 
         "questions_by_level": level_split
     }
 
-# A tiny sample text (used when no input is provided)
+
 SAMPLE_TEXT = """Computer networks enable devices to exchange data using links such as cables, Wi-Fi, or optical fiber.
 Routers forward packets between networks using routing tables and protocols like OSPF and BGP.
 The TCP/IP model includes layers such as application, transport, internet, and link.
