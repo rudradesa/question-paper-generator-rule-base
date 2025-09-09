@@ -10,6 +10,24 @@
       .no-print { display: none !important; }
       .page-break { page-break-before: always; }
     }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+    h1, h2 { text-align: center; }
+    .btn {
+      display: inline-block;
+      margin: 5px;
+      padding: 8px 14px;
+      background: black;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+    .btn:hover { background: black; }
+    .q { font-weight: bold; margin-top: 8px; }
+    .ans { color: green; margin-left: 15px; }
   </style>
 </head>
 <body>
@@ -22,91 +40,36 @@
     <header class="center">
       <h1>{{ subject }} — Question Paper</h1>
       {% if pdf_hash %}
-  <p><strong>File Hash (SHA256):</strong> {{ pdf_hash }}</p>
-{% endif %}
-
+        <p><strong>File Hash (SHA256):</strong> {{ pdf_hash }}</p>
+      {% endif %}
     </header>
 
- <section>
-  <h2>MCQ</h2>
-  <ol>
-    {% for q in paper.questions_by_level["Upper (top 30%)"] %}
-      {% if q.question is defined and q.options is defined %}
-       
-        <li>
-          <div class="q">{{ q.question }}</div>
-          <ol type="A">
-            {% for opt in q.options %}
-              <li>{{ opt }}</li>
-            {% endfor %}
-          </ol>
-          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
-        </li>
-      {% elif q.question is defined and q.answer is defined %}
-        <li>
-          <div class="q">{{ q.question }}</div>
-          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
-        </li>
-      {% else %}
-        <li class="q">{{ q }}</li>
-      {% endif %}
+    <!-- MCQs -->
+   <h2>MCQs</h2>
+{% for q in paper.questions_by_level["MCQ"] %}
+  <p>{{ loop.index }}. {{ q.stem }}</p>
+  <ul>
+    {% for opt in q.options %}
+      <li>{{ opt }}</li>
     {% endfor %}
-  </ol>
-</section>
+  </ul>
+{% endfor %}
 
-<section class="page-break">
-  <h2>Fill in the blacks</h2>
-  <ol>
-    {% for q in paper.questions_by_level["Middle (middle 40%)"] %}
-      {% if q.question is defined and q.options is defined %}
-        <li>
-          <div class="q">{{ q.question }}</div>
-          <ol type="A">
-            {% for opt in q.options %}
-              <li>{{ opt }}</li>
-            {% endfor %}
-          </ol>
-          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
-        </li>
-      {% elif q.question is defined and q.answer is defined %}
-        <li>
-          <div class="q">{{ q.question }}</div>
-          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
-        </li>
-      {% else %}
-        <li class="q">{{ q }}</li>
-      {% endif %}
-    {% endfor %}
-  </ol>
-</section>
+<h2>Fill in the Blanks</h2>
+{% for f in paper.questions_by_level["FillBlanks"] %}
+  <p>{{ loop.index }}. {{ f.stem }}</p>
+{% endfor %}
 
-<section class="page-break">
-  <h2>Long Questions</h2>
-  <ol>
-    {% for q in paper.questions_by_level["Lower (bottom 30%)"] %}
-      {% if q.question is defined and q.options is defined %}
-        <li>
-          <div class="q">{{ q.question }}</div>
-          <ol type="A">
-            {% for opt in q.options %}
-              <li>{{ opt }}</li>
-            {% endfor %}
-          </ol>
-          <div class="ans">Answer: <em>{{ q.answer }}</em></div>
-        </li>
-      {% elif q.question is defined and q.answer is defined %}
-        <li>
-          <div class="q">{{ q.question }}</div>
-          <!-- <div class="ans">Answer: <em>{{ q.answer }}</em></div> -->
-        </li>
-      {% else %}
-        <li class="q">{{ q }}</li>
-      {% endif %}
-    {% endfor %}
-  </ol>
-</section>
+<h2>Short Questions</h2>
+{% for s in paper.questions_by_level["Short"] %}
+  <p>{{ loop.index }}. {{ s }}</p>
+{% endfor %}
 
-   
+<h2>Long Questions</h2>
+{% for l in paper.questions_by_level["Long"] %}
+  <p>{{ loop.index }}. {{ l }}</p>
+{% endfor %}
+
   </div>
 </body>
 </html>
