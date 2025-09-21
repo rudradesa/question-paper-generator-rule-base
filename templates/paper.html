@@ -6,28 +6,20 @@
   <title>{{ subject }} - Question Paper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    @media print {
-      .no-print { display: none !important; }
-      .page-break { page-break-before: always; }
-    }
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      line-height: 1.6;
-    }
-    h1, h2 { text-align: center; }
-    .btn {
-      display: inline-block;
-      margin: 5px;
-      padding: 8px 14px;
-      background: black;
-      color: white;
-      text-decoration: none;
-      border-radius: 5px;
-    }
-    .btn:hover { background: black; }
-    .q { font-weight: bold; margin-top: 8px; }
-    .ans { color: green; margin-left: 15px; }
+    @media print { .no-print { display: none !important; } .page-break { page-break-before: always; } }
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+    header { display: flex; justify-content: flex-start; align-items: center; margin-bottom: 20px; }
+    header img { height: 60px; margin-right: 20px; }
+    .header-info { text-align: center; flex-grow: 1; }
+    h1, h2 { text-align: center; margin: 10px 0; }
+    .btn { display: inline-block; margin: 5px; padding: 8px 14px; background: black; color: white; text-decoration: none; border-radius: 5px; }
+    .btn:hover { background: #333; }
+    .q { font-weight: bold; margin-top: 12px; }
+    ul { list-style-type: none; padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    .ans { color: green; font-weight: bold; margin-top: 5px; }
+    .info-line { text-align: center; margin-bottom: 20px; }
+    .section { margin-top: 25px; }
   </style>
 </head>
 <body>
@@ -37,38 +29,66 @@
       <button onclick="window.print()" class="btn">Print / Save as PDF</button>
     </div>
 
-    <header class="center">
-      <h1>{{ subject }} — Question Paper</h1>
-      {% if pdf_hash %}
-        <p><strong>File Hash (SHA256):</strong> {{ pdf_hash }}</p>
-      {% endif %}
+    <header>
+      <img src="{{ url_for('static', filename='LJKU-Logo-Small.png') }}" alt="College Logo">
+      <div class="header-info">
+        <h1>L.J. University</h1>
+        <p>Subject: {{ subject }}</p>
+        <p>Total Marks: 100 | Duration: 3 Hrs | Date: __________</p>
+      </div>
     </header>
 
-    <!-- MCQs -->
-   <h2>MCQs</h2>
-{% for q in paper.questions_by_level["MCQ"] %}
-  <p>{{ loop.index }}. {{ q.stem }}</p>
-  <ul>
-    {% for opt in q.options %}
-      <li>{{ opt }}</li>
+    {% if pdf_hash %}
+      <p class="info-line"><strong>File Hash (SHA256):</strong> {{ pdf_hash }}</p>
+    {% endif %}
+<div class="section">
+  <h2>MCQs</h2>
+  <ol>
+    {% for q in paper.questions_by_level["MCQ"] %}
+      <li class="q">{{ q.stem }}</li>
+      <ul>
+        {% set letters = ['A', 'B', 'C', 'D'] %}
+        {% for opt in q.options %}
+          <li>{{ letters[loop.index0] }}. {{ opt }}</li>
+        {% endfor %}
+      </ul>
+      {% if q.answer %}
+        <p class="ans">Answer: {{ q.answer }}</p>
+      {% endif %}
     {% endfor %}
-  </ul>
-{% endfor %}
+  </ol>
+</div>
 
-<h2>Fill in the Blanks</h2>
-{% for f in paper.questions_by_level["FillBlanks"] %}
-  <p>{{ loop.index }}. {{ f.stem }}</p>
-{% endfor %}
 
-<h2>Short Questions</h2>
-{% for s in paper.questions_by_level["Short"] %}
-  <p>{{ loop.index }}. {{ s }}</p>
-{% endfor %}
+   
+    <div class="section">
+      <h2>Fill in the Blanks</h2>
+      <ol>
+        {% for f in paper.questions_by_level["FillBlanks"] %}
+          <li class="q">{{ f.stem }}</li>
+        {% endfor %}
+      </ol>
+    </div>
 
-<h2>Long Questions</h2>
-{% for l in paper.questions_by_level["Long"] %}
-  <p>{{ loop.index }}. {{ l }}</p>
-{% endfor %}
+    
+    <div class="section">
+      <h2>Short Questions</h2>
+      <ol>
+        {% for s in paper.questions_by_level["Short"] %}
+          <li class="q">{{ s }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+
+  
+    <div class="section">
+      <h2>Long Questions</h2>
+      <ol>
+        {% for l in paper.questions_by_level["Long"] %}
+          <li class="q">{{ l }}</li>
+        {% endfor %}
+      </ol>
+    </div>
 
   </div>
 </body>
