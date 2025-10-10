@@ -7,7 +7,8 @@ from PyPDF2 import PdfReader
 
 PERPLEXITY_API_KEY = ""
 
-SAMPLE_TEXT = " This text will be extended with additional details to help generate long questions about AI, including applications, ethical concerns, and societal impact."
+SAMPLE_TEXT = "Artificial Intelligence (AI) involves creating intelligent agents capable of reasoning, learning, and adapting. Key topics include search algorithms, machine learning, natural language processing, and robotics. Ethical implications of AI and societal impacts are important considerations."
+
 
 
 # --- Utility functions ---
@@ -141,55 +142,42 @@ def generate_short_questions(text: str, n: int) -> List[str]:
 def generate_long_questions(text: str, n: int) -> list:
     """
     Generate n long questions from structured text.
-    Filters out headings, section numbers, and other non-content lines.
-    Produces clean questions asking for reasoning and examples.
+    Cleans headings, placeholders, repetitive text, and generates meaningful questions.
     """
+
     if not text or len(text.split()) < 50:
-        text += " This text provides detailed information suitable for generating analytical and applied long questions."
+        text += " This content provides detailed information suitable for analytical and applied long questions."
 
-    # Split text into candidate sentences by '.', ':', or newline
-    candidates = re.split(r'(?<=[.:])\s+|\n', text)
-    candidates = [s.strip() for s in candidates if s.strip()]
+    # Clean and preprocess text
+    text = re.sub(r'\s+', ' ', text.replace("-\n", " ").replace("\n", " ")).strip()
+    text = re.sub(r'(?i)^(UNIT|CHAPTER|SECTION|[0-9]+[\.\-]).*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'(?i)(Artificial Intelligence \(AI\) involves|Key topics include|This text provides).*?\.', '', text)
 
-    questions = []
-    count = 0
+    # Split into candidate sentences
+    candidates = [s.strip() for s in re.split(r'(?<=[.:;])\s+', text) if s.strip()]
+    questions, used = [], set()
 
     for s in candidates:
-        # Skip short fragments
-        if len(s.split()) < 5:
+        # Filters: short, mostly uppercase, weird spacing, duplicates
+        if (len(s.split()) < 6 or
+            sum(1 for w in s.split() if w.isupper()) / max(1, len(s.split())) > 0.6 or
+            re.search(r'\b[a-zA-Z]\s+[a-zA-Z]\b', s) or
+            s.lower() in used):
             continue
-        # Skip headings / all uppercase or number-heavy lines
-        if s.isupper() or re.match(r'^[A-Z0-9\s\-\.:]+$', s):
-            continue
-        # Skip lines with weird spacing or incomplete words (like "t o AI")
-        if re.search(r'\b[a-zA-Z]\s+[a-zA-Z]\b', s):
-            continue
-        # Skip lines that are clearly quotations or citations only
-        if re.match(r'^“.*”$', s):
-            s = s.strip('“”')  # Keep content inside quotes
 
-        # Remove repetitive phrase if present
-        s = re.sub(r"(?i)^Discuss the implications of the following idea: ?", "", s).strip()
-
-        # Form the question
-        question = f"{s} Explain your reasoning and provide examples or applications where relevant."
-        questions.append(question)
-        count += 1
-        if count >= n:
+        questions.append(f"{s} Explain your reasoning and provide examples or applications where relevant.")
+        used.add(s.lower())
+        if len(questions) >= n:
             break
 
-    # If not enough questions, repeat some with slight variation
+    # Backfill if not enough questions
+    i = 0
     while len(questions) < n:
-        for s in candidates:
-            if len(s.split()) < 5:
-                continue
-            if s.isupper() or re.match(r'^[A-Z0-9\s\-\.:]+$', s):
-                continue
-            s = re.sub(r"(?i)^Discuss the implications of the following idea: ?", "", s).strip()
-            question = f"{s} Explain how this concept can be applied or interpreted in practice."
-            questions.append(question)
-            if len(questions) >= n:
-                break
+        s = candidates[i % len(candidates)].strip()
+        if len(s.split()) >= 6 and s.lower() not in used:
+            questions.append(f"{s} Explain how this concept can be applied or interpreted in practice.")
+            used.add(s.lower())
+        i += 1
 
     return questions[:n]
 
