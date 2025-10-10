@@ -138,53 +138,62 @@ def generate_fibs(text: str, n: int) -> List[Dict]:
 
 def generate_short_questions(text: str, n: int) -> List[str]:
     return generate_questions_from_text(text, "Short", n)
+
 def generate_long_questions(text: str, n: int) -> list:
     """
     Generate n long questions from structured text.
-    Filters out headings, section numbers, filler lines, and unwanted repetitive sentences.
-    Produces clean questions asking for reasoning, examples, or applications.
+    Filters out headings, section numbers, and other non-content lines.
+    Produces clean questions asking for reasoning and examples.
     """
     if not text or len(text.split()) < 50:
-        text += " This content provides enough material for analytical long questions."
+        text += " This text provides detailed information suitable for generating analytical and applied long questions."
 
-    # --- Preprocessing ---
-    text = re.sub(r'\s+', ' ', text.replace("-\n", " ").replace("\n", " ")).strip()
-    # Remove headings, sections, and known filler sentences
-    text = re.sub(
-        r'(?im)^(UNIT|CHAPTER|SECTION|[0-9]+[\.\-]).*|'
-        r'(Artificial Intelligence \(AI\) involves|Key topics include|This text provides).*?\.', '', text
-    )
+    # Split text into candidate sentences by '.', ':', or newline
+    candidates = re.split(r'(?<=[.:])\s+|\n', text)
+    candidates = [s.strip() for s in candidates if s.strip()]
 
-    # Candidate sentences
-    candidates = [s.strip() for s in re.split(r'(?<=[.:;])\s+', text) if len(s.strip().split()) >= 6]
-
-    # List of sentences to completely skip
-    skip_sentences = [
-        "Ethical implications of AI and societal impacts are important considerations."
-    ]
-
-    questions, used = [], set()
+    questions = []
+    count = 0
 
     for s in candidates:
-        # Skip unwanted sentences
-        if s in skip_sentences:
+        # Skip short fragments
+        if len(s.split()) < 5:
             continue
-        # Skip mostly uppercase lines or weirdly spaced lines
-        if (sum(1 for w in s.split() if w.isupper()) / len(s.split()) > 0.6 or
-            re.search(r'\b[a-zA-Z]\s+[a-zA-Z]\b', s) or
-            s.lower() in used):
+        # Skip headings / all uppercase or number-heavy lines
+        if s.isupper() or re.match(r'^[A-Z0-9\s\-\.:]+$', s):
             continue
+        # Skip lines with weird spacing or incomplete words (like "t o AI")
+        if re.search(r'\b[a-zA-Z]\s+[a-zA-Z]\b', s):
+            continue
+        # Skip lines that are clearly quotations or citations only
+        if re.match(r'^“.*”$', s):
+            s = s.strip('“”')  # Keep content inside quotes
 
         # Remove repetitive phrase if present
         s = re.sub(r"(?i)^Discuss the implications of the following idea: ?", "", s).strip()
-        questions.append(f"{s} Explain your reasoning and provide examples or applications where relevant.")
-        used.add(s.lower())
 
-        if len(questions) >= n:
+        # Form the question
+        question = f"{s} Explain your reasoning and provide examples or applications where relevant."
+        questions.append(question)
+        count += 1
+        if count >= n:
             break
 
-    return questions[:n]
+    # If not enough questions, repeat some with slight variation
+    while len(questions) < n:
+        for s in candidates:
+            if len(s.split()) < 5:
+                continue
+            if s.isupper() or re.match(r'^[A-Z0-9\s\-\.:]+$', s):
+                continue
+            s = re.sub(r"(?i)^Discuss the implications of the following idea: ?", "", s).strip()
+            question = f"{s} Explain how this concept can be applied or interpreted in practice."
+            questions.append(question)
+            if len(questions) >= n:
+                break
 
+    return questions[:n]
+# --- Full Question Paper ---
 def generate_question_paper(text: str = None, pdf_path: str = None, subject: str = "General",
                             counts: Dict[str,int] = None) -> dict:
     counts = counts or {"mcq":10, "fib":10, "short":5, "long":4}
