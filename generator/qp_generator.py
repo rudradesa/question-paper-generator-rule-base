@@ -1,20 +1,18 @@
 import os
 import hashlib
 import re
-import random
 import requests
 from typing import List, Dict
 from PyPDF2 import PdfReader
 
-
 PERPLEXITY_API_KEY = ""
 
-def clean_text(text: str) -> str:
-    text = text.replace("-\n", "").replace("\n", " ")
-    return re.sub(r"\s+", " ", text).strip()
+SAMPLE_TEXT = " This text will be extended with additional details to help generate long questions about AI, including applications, ethical concerns, and societal impact."
 
-def sentences(text: str) -> List[str]:
-    return re.split(r'(?<=[.!?]) +', text)
+
+# --- Utility functions ---
+def clean_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text.replace("-\n", "").replace("\n", " ")).strip()
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     text = ""
@@ -33,189 +31,187 @@ def get_pdf_hash(pdf_path: str) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+# --- AI Text Sanitizer ---
+def sanitize_ai_text(q: str) -> str:
+    q = re.sub(r"^#+.*", "", q, flags=re.MULTILINE)
+    q = re.sub(r"[*_`>~-]+", "", q)
+    q = re.sub(r"(?i)^ *(here|generate|list|create|write|provide|give).*?:", "", q, flags=re.MULTILINE)
+    q = re.sub(r"(?i)(source|explanation|answer|key|based on).*?:.*", "", q)
+    q = re.sub(r"(?i)with the missing word.*", "", q)
+    q = re.sub(r"(?i)correct answer.*", "", q)
+    q = re.sub(r"\n{2,}", "\n", q)
+    q = re.sub(r"\s{2,}", " ", q)
+    return q.strip()
 
-def perplexity_generate_questions_batch(context: str, qtype="MCQ", n=5) -> List[str]:
-    """
-    Generate `n` questions at once for a given text context.
-    Returns a list of strings (each question + options as returned by Perplexity).
-    """
-    system_msg = "You are a teacher generating exam questions from text."
-
+# --- Perplexity API question generator ---
+def generate_questions_from_text(context: str, qtype: str, n: int) -> List[str]:
+    system_msg = "You are an expert teacher creating exam questions."
+    
     if qtype == "MCQ":
-        user_msg = f"""
-Generate {n} multiple-choice questions from the following text.
-For each question, provide four options labeled A-D, and mark the correct answer like: 'Answer: B'.
+        prompt = f"""
+    Generate {n} high-quality multiple-choice questions from the following text.
+    - Use specific terms from the text in questions and answers.
+    - Each question must have four options (A-D) and the correct answer clearly labeled as 'Answer: B'.
+    - Number questions 1., 2., 3., etc.
+    - Do NOT include explanations or additional text.
 
-Text:
-{context}
-"""
+    Text:
+    {context}
+    """
     elif qtype == "FIB":
-        user_msg = f"""
-Generate {n} fill-in-the-blank questions from the following text.
-Replace the blank word with '_____'. Provide the answer at the end like: 'Answer: <word>'.
+        prompt = f"""
+        Generate {n} fill-in-the-blank questions from the text below.
+        - Select a key word or phrase from the text to hide as a blank: '_____'.
+        - Provide the missing word immediately after the question as 'Answer: <word>'.
+        - Number questions 1., 2., 3., etc.
+        - Do NOT add explanations or extra text.
 
-Text:
-{context}
-"""
-    else:
-        user_msg = f"Generate {n} {qtype.lower()} questions from the following text:\n{context}"
+    Text:
+    {context}
+    """
+    else:  # Short / Long questions
+        prompt = f"""
+        Generate {n} {qtype.lower()} questions from the following text.
+        - Use specific content from the text.
+        - Number questions 1., 2., 3., etc.
+        - Do NOT include answers or explanations.
+        """
 
     try:
         response = requests.post(
             "https://api.perplexity.ai/chat/completions",
-            headers={
-                "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "sonar", 
-                "messages": [
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": user_msg}
-                ],
-                "temperature": 0.7,
-                "max_tokens": 600  
-            },
+            headers={"Authorization": f"Bearer {PERPLEXITY_API_KEY}", "Content-Type": "application/json"},
+            json={"model": "sonar", "messages":[{"role":"system","content":system_msg},{"role":"user","content":prompt}],
+                  "temperature":0.7, "max_tokens":1000},
             timeout=30
         )
         data = response.json()
         if "choices" not in data:
             print("⚠️ Perplexity API raw response:", data)
             return []
-
         questions_text = data["choices"][0]["message"]["content"].strip()
-        questions = re.split(r"\n\s*\n", questions_text)  
-        return questions[:n]  
-
+        questions = re.split(r"\n(?=\d+\.)", questions_text)  # split by numbered questions
+        return [sanitize_ai_text(q) for q in questions if q.strip()][:n]
     except Exception as e:
         print("⚠️ Perplexity API error:", e)
         return []
 
+# --- MCQ Parser ---
+def parse_mcq(q_text: str) -> Dict:
+    q_text = sanitize_ai_text(q_text)
+    opts = re.findall(r"[A-D][\.\)]\s*(.+?)(?=\n[A-D][\.\)]|$)", q_text)
+    opts = list(dict.fromkeys([sanitize_ai_text(o) for o in opts]))[:4]
+    stem = re.split(r"[A-D][\.\)]", q_text)[0].strip()
+    ans_match = re.search(r"Answer\s*[:\-]?\s*([A-D])", q_text, re.IGNORECASE)
+    answer = opts[ord(ans_match.group(1).upper()) - 65] if ans_match else None
+    return {"stem": stem, "options": opts, "answer": answer}
 
 def generate_mcqs(text: str, n: int) -> List[Dict]:
-    questions_raw = perplexity_generate_questions_batch(text, qtype="MCQ", n=n)
-    mcqs = []
-
-    for q_text in questions_raw:
-        # Extract question stem
-        stem_match = re.search(r"^(.*?)\n", q_text, re.DOTALL)
-        stem = stem_match.group(1).strip() if stem_match else q_text.strip()
-
-        # Extract options
-        opts = re.findall(r"[A-D]\.\s*([^\n]+)", q_text)
-
-        # Extract correct answer
-        answer_match = re.search(r"Answer:\s*([A-D])", q_text, re.IGNORECASE)
-        answer = opts[ord(answer_match.group(1).upper()) - 65] if opts and answer_match else None
-
-        mcqs.append({
-            "stem": stem,
-            "options": opts if opts else [],
-            "answer": answer
-        })
-
-    return mcqs
+    raw = generate_questions_from_text(text, "MCQ", n)
+    return [parse_mcq(q) for q in raw]
 
 def generate_fibs(text: str, n: int) -> List[Dict]:
-    questions_raw = perplexity_generate_questions_batch(text, qtype="FIB", n=n)
+    raw = generate_questions_from_text(text, "FIB", n)
     fibs = []
 
-    for q_text in questions_raw:
-        answer_match = re.search(r"Answer:\s*(.+)", q_text)
-        answer = answer_match.group(1) if answer_match else "_____"
-        stem = re.sub(r"Answer:\s*.+", "_____", q_text).strip()
+    for q in raw:
+        # Try to find the answer from "Answer: ..." pattern
+        ans_match = re.search(r"Answer:\s*(.+)", q)
+        answer = ans_match.group(1).strip() if ans_match else None
+
+        # Remove "Answer: ..." from question text
+        stem = re.sub(r"Answer:\s*.+", "", q).strip()
+
+        # Replace answer with blank if we found it, else just add blank at end
+        if answer and answer in stem:
+            stem = stem.replace(answer, "_____")
+        else:
+            # If answer not found in text, just append a blank at the end
+            if not stem.endswith("."):
+                stem += " "
+            stem += "_____"
+
         fibs.append({"stem": stem, "answer": answer})
 
     return fibs
 
 def generate_short_questions(text: str, n: int) -> List[str]:
+    return generate_questions_from_text(text, "Short", n)
+
+def generate_long_questions(text: str, n: int) -> list:
     """
-    Generate a list of individual short questions from the text.
+    Generate n long questions from structured text.
+    Filters out headings, section numbers, and other non-content lines.
+    Produces clean questions asking for reasoning and examples.
     """
-    # Get all short questions in batch (you can adjust n if needed)
-    questions_raw = perplexity_generate_questions_batch(text, qtype="Short", n=n)
-    
-    # Split any multiple questions returned in a single string by numbering or newline
-    short_questions = []
-    for q in questions_raw:
-        # Split by number or newline
-        split_qs = re.split(r'\s*\d+\.\s+', q)
-        for sq in split_qs:
-            sq = sq.strip()
-            if sq:  # ignore empty
-                short_questions.append(sq)
-    
-    return short_questions[:n]
+    if not text or len(text.split()) < 50:
+        text += " This text provides detailed information suitable for generating analytical and applied long questions."
 
+    # Split text into candidate sentences by '.', ':', or newline
+    candidates = re.split(r'(?<=[.:])\s+|\n', text)
+    candidates = [s.strip() for s in candidates if s.strip()]
 
-def generate_long_questions(text: str, n: int) -> List[str]:
-    questions_raw = perplexity_generate_questions_batch(text, qtype="Long", n=n)
-    return [q.strip() for q in questions_raw]
+    questions = []
+    count = 0
 
-# =========================
-# Main wrapper
-# =========================
-def clean_mcq_options(mcqs):
-    letters = ['A', 'B', 'C', 'D']
-    cleaned_mcqs = []
+    for s in candidates:
+        # Skip short fragments
+        if len(s.split()) < 5:
+            continue
+        # Skip headings / all uppercase or number-heavy lines
+        if s.isupper() or re.match(r'^[A-Z0-9\s\-\.:]+$', s):
+            continue
+        # Skip lines with weird spacing or incomplete words (like "t o AI")
+        if re.search(r'\b[a-zA-Z]\s+[a-zA-Z]\b', s):
+            continue
+        # Skip lines that are clearly quotations or citations only
+        if re.match(r'^“.*”$', s):
+            s = s.strip('“”')  # Keep content inside quotes
 
-    for q in mcqs:
-        opts = q.get("options", [])
-        # Remove duplicates & empty strings
-        opts = list(dict.fromkeys([opt.strip() for opt in opts if opt.strip()]))
-        # Fill missing options
-        while len(opts) < 4:
-            opts.append("N/A")
-        q["options"] = opts[:4]
+        # Remove repetitive phrase if present
+        s = re.sub(r"(?i)^Discuss the implications of the following idea: ?", "", s).strip()
 
-       
-        answer_text = q.get("answer")
-        if answer_text and answer_text in opts:
-            q["answer"] = letters[opts.index(answer_text)]
-        else:
-            q["answer"] = None  
+        # Form the question
+        question = f"{s} Explain your reasoning and provide examples or applications where relevant."
+        questions.append(question)
+        count += 1
+        if count >= n:
+            break
 
-        cleaned_mcqs.append(q)
-    return cleaned_mcqs
+    # If not enough questions, repeat some with slight variation
+    while len(questions) < n:
+        for s in candidates:
+            if len(s.split()) < 5:
+                continue
+            if s.isupper() or re.match(r'^[A-Z0-9\s\-\.:]+$', s):
+                continue
+            s = re.sub(r"(?i)^Discuss the implications of the following idea: ?", "", s).strip()
+            question = f"{s} Explain how this concept can be applied or interpreted in practice."
+            questions.append(question)
+            if len(questions) >= n:
+                break
 
+    return questions[:n]
+
+# --- Full Question Paper ---
 def generate_question_paper(text: str = None, pdf_path: str = None, subject: str = "General",
                             counts: Dict[str,int] = None) -> dict:
-    counts = counts or {"mcq": 10, "fib": 10, "short": 5, "long": 4}
-
+    counts = counts or {"mcq":10, "fib":10, "short":5, "long":4}
     if pdf_path and os.path.isfile(pdf_path):
         text = extract_text_from_pdf(pdf_path)
         hash_hex = get_pdf_hash(pdf_path)
     else:
         text = text or SAMPLE_TEXT
         hash_hex = hashlib.sha256(text.encode()).hexdigest()
-
     text = clean_text(text)
-
-    
-    mcqs = generate_mcqs(text, counts.get("mcq", 10))
-    mcqs = clean_mcq_options(mcqs)
-
-    
-    letters = ['A', 'B', 'C', 'D']
-    for q in mcqs:
-        if q.get("answer"):
-            for i, opt in enumerate(q["options"]):
-                if opt == q["answer"]:
-                    q["answer"] = letters[i]
-                    break
 
     return {
         "subject": subject,
         "hash": hash_hex,
         "questions_by_level": {
-            "MCQ": mcqs,
-            "FillBlanks": generate_fibs(text, counts.get("fib", 10)),
-            "Short": generate_short_questions(text, counts.get("short", 5)),
-            "Long": generate_long_questions(text, counts.get("long", 4)),
+            "MCQ": generate_mcqs(text, counts["mcq"]),
+            "FillBlanks": generate_fibs(text, counts["fib"]),
+            "Short": generate_short_questions(text, counts["short"]),
+            "Long": generate_long_questions(text, counts["long"]),
         }
     }
-
-
-SAMPLE_TEXT = """Artificial Intelligence (AI) is the simulation of human intelligence in machines.
-It involves creating intelligent systems capable of perceiving, reasoning, learning, and problem-solving.
-AI has numerous real-world applications in healthcare, finance, transportation, and cybersecurity."""
